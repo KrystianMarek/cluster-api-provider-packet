@@ -162,6 +162,7 @@ func (m *MachineScope) GetProviderID() string {
 func (m *MachineScope) SetProviderID(deviceID string) {
 	pid := fmt.Sprintf("%s://%s", m.providerIDPrefix, deviceID)
 	m.PacketMachine.Spec.ProviderID = pointer.StringPtr(pid)
+	m.Machine.Status.NodeRef.UID = types.UID(deviceID)
 }
 
 // GetInstanceID returns the DOMachine droplet instance id by parsing Spec.ProviderID.
@@ -206,6 +207,17 @@ func (m *MachineScope) SetFailureReason(v capierrors.MachineStatusError) {
 // SetAddresses sets the address status.
 func (m *MachineScope) SetAddresses(addrs []corev1.NodeAddress) {
 	m.PacketMachine.Status.Addresses = addrs
+
+	machineAddresses := make(clusterv1.MachineAddresses, cap(addrs))
+	for index := range addrs {
+		mAddr := clusterv1.MachineAddress{
+			Address: addrs[index].Address,
+			Type:    clusterv1.MachineAddressType(addrs[index].Type),
+		}
+
+		machineAddresses = append(machineAddresses, mAddr)
+	}
+	m.Machine.Status.Addresses = machineAddresses
 }
 
 // AdditionalTags returns Tags from the scope's PacketMachine. The returned value will never be nil.
@@ -280,12 +292,12 @@ func getProviderIDPrefix(ctx context.Context, mgmtClient client.Client, workload
 
 // providerIDFromKubeadmConfig attempts to determine the appropriate providerID prefix to use based on the configuration
 // of the referenced KubeadmConfig resource. It uses the following precedence:
-// - If an explicit providerID is being configured for the kubelet through extra arguments in the InitConfiguration, use it
-// - If an explicit providerID is being configured for the kubelet through extra arguments in the JoinConfiguration, use it
-//   (InitConfiguration and JoinConfiguration are mutually exclusive options)
-// - If the PostKubeadmCommands are deploying packet-ccm, use "packet"
-// - If the PostKubeadmCommands are deploying cloud-provider-equinix-metal, use "equinixmetal"
-// - Otherwise, return ""
+//   - If an explicit providerID is being configured for the kubelet through extra arguments in the InitConfiguration, use it
+//   - If an explicit providerID is being configured for the kubelet through extra arguments in the JoinConfiguration, use it
+//     (InitConfiguration and JoinConfiguration are mutually exclusive options)
+//   - If the PostKubeadmCommands are deploying packet-ccm, use "packet"
+//   - If the PostKubeadmCommands are deploying cloud-provider-equinix-metal, use "equinixmetal"
+//   - Otherwise, return ""
 func providerIDFromKubeadmConfig(ctx context.Context, mgmtClient client.Client, namespace, name string) (string, error) {
 	kubeadmConfig := new(bootstrapv1.KubeadmConfig)
 	key := client.ObjectKey{
