@@ -162,7 +162,13 @@ func (m *MachineScope) GetProviderID() string {
 func (m *MachineScope) SetProviderID(deviceID string) {
 	pid := fmt.Sprintf("%s://%s", m.providerIDPrefix, deviceID)
 	m.PacketMachine.Spec.ProviderID = pointer.StringPtr(pid)
-	m.Machine.Status.NodeRef.UID = types.UID(deviceID)
+
+	m.Machine.Spec.ProviderID = m.PacketMachine.Spec.ProviderID
+
+	nodeRef := new(corev1.ObjectReference)
+	nodeRef.UID = types.UID(deviceID)
+
+	m.Machine.Status.NodeRef = nodeRef
 }
 
 // GetInstanceID returns the DOMachine droplet instance id by parsing Spec.ProviderID.
@@ -207,17 +213,14 @@ func (m *MachineScope) SetFailureReason(v capierrors.MachineStatusError) {
 // SetAddresses sets the address status.
 func (m *MachineScope) SetAddresses(addrs []corev1.NodeAddress) {
 	m.PacketMachine.Status.Addresses = addrs
-
 	machineAddresses := make(clusterv1.MachineAddresses, cap(addrs))
-	for index := range addrs {
+	for i, v := range addrs {
 		mAddr := clusterv1.MachineAddress{
-			Address: addrs[index].Address,
-			Type:    clusterv1.MachineAddressType(addrs[index].Type),
+			Address: v.Address,
+			Type:    clusterv1.MachineAddressType(v.Type),
 		}
-
-		machineAddresses = append(machineAddresses, mAddr)
+		machineAddresses[i] = mAddr
 	}
-	m.Machine.Status.Addresses = machineAddresses
 }
 
 // AdditionalTags returns Tags from the scope's PacketMachine. The returned value will never be nil.
