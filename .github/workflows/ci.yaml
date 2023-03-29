@@ -4,7 +4,7 @@ on:
     branches:
     - main
   schedule:
-    - cron: "0 */4 * * *" # TODO: Run every 4 hours to soak test, should be less frequent before merge (weekly/daily/???)
+  - cron: "5 0 * * *" # TODO: Run every 4 hours to soak test, should be less frequent before merge (weekly/daily/???)
   workflow_dispatch:
 env:
   IMAGE_NAME: cluster-api-provider-packet
@@ -97,7 +97,7 @@ jobs:
         password: ${{ secrets.QUAY_PASSWORD }}
 
     - name: Build and push manager image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: .
         push: true
